@@ -241,7 +241,7 @@ Module Program
 
                         If EmptySpaceCount = 4 Then
                             Maze(row, col) = "#"
-                        ElseIf EmptySpaceCount >= 6 Then
+                        ElseIf EmptySpaceCount >= 7 Then
                             Maze(row, col) = "X"
                             'Maze(row, col) = "X" 'Convert pellet to wall if 3 or more sides are empty space)
                         End If
@@ -266,9 +266,6 @@ Module Program
             Maze(i, 15) = "X"
         Next
 
-        PlayerPlacement(StartingPos, PlayerPos)
-
-
         ' Count the total pellets
         PelletCount = 0
         For row As Integer = 1 To 14
@@ -292,7 +289,7 @@ Module Program
                     ' Surrounded by walls → fill in
                     Maze(row, col) = "X"
 
-                ElseIf EmptySpaceCount >= 6 Then
+                ElseIf EmptySpaceCount >= 7 Then
                     ' Surrounded by open space → fill in to reduce large caves
                     Maze(row, col) = "X"
 
@@ -305,7 +302,10 @@ Module Program
                 If Maze(row, col) = "." Then PelletCount += 1
 
             Next
+
         Next
+
+        PlayerPlacement(StartingPos, PlayerPos)
 
     End Sub
     Sub DisplayMaze()
