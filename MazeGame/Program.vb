@@ -1,4 +1,5 @@
-Imports System
+﻿Imports System
+Imports System.ComponentModel.Design
 Imports System.Security.Cryptography.X509Certificates
 Imports Thread
 
@@ -103,6 +104,8 @@ Module Program
 
         PlayerPlacement(StartingPos, PlayerPos)
 
+        Console.SetCursorPosition(0, 0) ' Move cursor to top-left
+
         ' Count the total pellets
         PelletCount = 0
         For r As Integer = 0 To 9
@@ -118,7 +121,7 @@ Module Program
     Sub RandomiseMaze(ByRef StartingPos() As Integer, ByRef PlayerPos() As Integer, ByRef PelletCount As Integer) 'This sub will randomise the maze layout each time the game is run
 
         Dim Rnd As New Random()
-        Dim PelletLineCount As Integer = Rnd.Next(10, 19)
+        Dim PelletLineCount As Integer = Rnd.Next(20, 25)
 
         For Row As Integer = 0 To 15
             For Col As Integer = 0 To 15
@@ -170,21 +173,34 @@ Module Program
 
                 'Console.ReadLine()
 
+                Dim IntersectionPoint(1) As Integer 'Where the two lines intersect
+
                 For i As Integer = 0 To LastCount - 1 '<--- we are checking If the both the x And y coords are the same In both lists.
                     For j As Integer = 0 To CurrentCount - 1
                         If LastLine(i, 0) = CurrentLine(j, 0) AndAlso LastLine(i, 1) = CurrentLine(j, 1) Then
                             TwoDigitConfirm += 1 'x and y both match
+                            IntersectionPoint(0) = CurrentLine(j, 0)
+                            IntersectionPoint(1) = CurrentLine(j, 1)
+
                         End If
                     Next
                 Next
 
+
                 If TwoDigitConfirm >= 1 Or (LastCount = 0 And x = 1) Then
                     IntersectionFound = True
-                    'Console.WriteLine("Successful Line Added")
-                    'Console.ReadLine()
 
                     For squares As Integer = 0 To CurrentCount - 1
-                        Maze(CurrentLine(squares, 0), CurrentLine(squares, 1)) = "."
+
+                        If CurrentLine(squares, 0) = IntersectionPoint(0) And CurrentLine(squares, 1) = IntersectionPoint(1) Then
+                            Maze(CurrentLine(squares, 0), CurrentLine(squares, 1)) = "#" 'Intersection point
+                        ElseIf Maze(CurrentLine(squares, 0), CurrentLine(squares, 1)) = "#" Then
+                            'Do nothing, keep as intersection
+                        Else
+                            Maze(CurrentLine(squares, 0), CurrentLine(squares, 1)) = "." 'Pellet pathway
+
+                        End If
+
                     Next
 
                     For k As Integer = 0 To CurrentCount - 1
@@ -196,7 +212,52 @@ Module Program
 
             Loop Until IntersectionFound = True
 
+            'Code below will add walls around pellets if there is empty space adjacent to them
+            ' CHANGE LATER: Code messy
+            Dim EmptySpaceCount As Integer
+
+
+            Console.SetCursorPosition(0, 0) ' Move cursor to top-left
+            DisplayMaze()
+            Threading.Thread.Sleep(5)
+
+
+            For row As Integer = 1 To 14
+                For col As Integer = 1 To 14
+                    If Maze(row, col) = "." Then
+
+                        'DisplayMaze()
+                        EmptySpaceCount = 0
+
+                        'Check all 4 directions
+                        If Maze(row, col - 1) = "." And Maze(row, col - 1) <> "#" Then EmptySpaceCount += 1
+                        If Maze(row, col + 1) = "." And Maze(row, col + 1) <> "#" Then EmptySpaceCount += 1
+                        If Maze(row - 1, col) = "." And Maze(row - 1, col) <> "#" Then EmptySpaceCount += 1
+                        If Maze(row + 1, col) = "." And Maze(row + 1, col) <> "#" Then EmptySpaceCount += 1
+                        If Maze(row - 1, col - 1) = "." And Maze(row - 1, col - 1) <> "#" Then EmptySpaceCount += 1
+                        If Maze(row - 1, col + 1) = "." And Maze(row - 1, col + 1) <> "#" Then EmptySpaceCount += 1
+                        If Maze(row + 1, col - 1) = "." And Maze(row + 1, col - 1) <> "#" Then EmptySpaceCount += 1
+                        If Maze(row + 1, col + 1) = "." And Maze(row + 1, col + 1) <> "#" Then EmptySpaceCount += 1
+
+                        If EmptySpaceCount = 4 Then
+                            Maze(row, col) = "#"
+                        ElseIf EmptySpaceCount >= 6 Then
+                            Maze(row, col) = "X"
+                            'Maze(row, col) = "X" 'Convert pellet to wall if 3 or more sides are empty space)
+                        End If
+
+                        If Maze(row, col) = "#" Then
+                            Maze(row, col) = "."
+                        End If
+                    End If
+                Next
+            Next
+
+            'Console.ReadLine()
+
+
         Next
+
 
         For i As Integer = 0 To 15
             Maze(0, i) = "X"
@@ -210,23 +271,72 @@ Module Program
 
         ' Count the total pellets
         PelletCount = 0
-        For r As Integer = 0 To 15
-            For c As Integer = 0 To 15
-                If Maze(r, c) = "." Then
-                    PelletCount += 1
+        For row As Integer = 1 To 14
+            For col As Integer = 1 To 14
+
+                ' Count surrounding empty spaces (non-walls)
+                Dim EmptySpaceCount As Integer = 0
+
+                ' Check all 8 directions
+                If Maze(row, col - 1) <> "X" Then EmptySpaceCount += 1
+                If Maze(row, col + 1) <> "X" Then EmptySpaceCount += 1
+                If Maze(row - 1, col) <> "X" Then EmptySpaceCount += 1
+                If Maze(row + 1, col) <> "X" Then EmptySpaceCount += 1
+                If Maze(row - 1, col - 1) <> "X" Then EmptySpaceCount += 1
+                If Maze(row - 1, col + 1) <> "X" Then EmptySpaceCount += 1
+                If Maze(row + 1, col - 1) <> "X" Then EmptySpaceCount += 1
+                If Maze(row + 1, col + 1) <> "X" Then EmptySpaceCount += 1
+
+                ' Apply smoothing based on nearby open space
+                If EmptySpaceCount <= 1 Then
+                    ' Surrounded by walls → fill in
+                    Maze(row, col) = "X"
+
+                ElseIf EmptySpaceCount >= 6 Then
+                    ' Surrounded by open space → fill in to reduce large caves
+                    Maze(row, col) = "X"
+
+                ElseIf EmptySpaceCount = 4 Or EmptySpaceCount = 5 Then
+                    ' Balanced areas (keep as path)
+                    Maze(row, col) = "."
                 End If
+
+                If Maze(row, col) = "#" Then Maze(row, col) = "."
+                If Maze(row, col) = "." Then PelletCount += 1
+
             Next
         Next
 
     End Sub
     Sub DisplayMaze()
 
+        Console.SetCursorPosition(0, 0) ' Move cursor to top-left
+
         For Row As Integer = 0 To 15
             For Col As Integer = 0 To 15
+
+                If Row = 0 Or Row = 15 Or Col = 0 Or Col = 15 Then
+                    Console.ForegroundColor = ConsoleColor.DarkGray   ' Borders in dark blue
+                ElseIf Maze(Row, Col) = "X" Then
+                    Console.ForegroundColor = ConsoleColor.Gray ' Internal walls in white
+                End If
+
+                If Maze(Row, Col) = Player Then
+                    Console.ForegroundColor = ConsoleColor.DarkGreen ' Player in green
+                ElseIf Maze(Row, Col) = "#" Then
+                    Console.ForegroundColor = ConsoleColor.DarkYellow
+                ElseIf Maze(Row, Col) = "." Then
+                    Console.ForegroundColor = ConsoleColor.Yellow ' Pellets in yellow
+
+                End If
+
+
                 Console.Write(Maze(Row, Col) & " ")
             Next
             Console.WriteLine()
         Next
+
+        Console.ResetColor()
 
     End Sub
 
@@ -260,8 +370,6 @@ Module Program
                 Threading.Thread.Sleep(1000)
         End Select
 
-        Console.Clear()
-
     End Sub
 
     Sub CheckForX(ByRef StartingPos() As Integer, ByRef PlayerPos() As Integer, ByRef NewPos() As Integer, ByRef PelletCount As Integer)
@@ -272,6 +380,7 @@ Module Program
             Maze(PlayerPos(0), PlayerPos(1)) = " " 'Will replace current position as blank
             Maze(StartingPos(0), StartingPos(1)) = Player 'Sends player back to the start
             PlayerPos = StartingPos 'Since a move has been made, replaces new validated position with old.
+            Console.Clear()
 
         Else 'If there is pellet in next position
 
